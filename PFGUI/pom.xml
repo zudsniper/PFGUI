@@ -4,7 +4,7 @@
 
   <groupId>cc.holstr</groupId>
   <artifactId>PFGUI</artifactId>
-  <version>0.0.3-SNAPSHOT</version>
+  <version>0.0.1-ALPHA</version>
   <packaging>jar</packaging>
 
   <name>PFGUI</name>

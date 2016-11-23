@@ -6,10 +6,14 @@ import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.GridLayout;
+import java.awt.datatransfer.DataFlavor;
+import java.awt.dnd.DnDConstants;
+import java.awt.dnd.DropTarget;
+import java.awt.dnd.DropTargetDropEvent;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.File;
-import java.util.concurrent.ExecutionException;
+import java.util.List;
 
 import javax.swing.BorderFactory;
 import javax.swing.ImageIcon;
@@ -28,6 +32,7 @@ import javax.swing.JTextField;
 import org.imgscalr.Scalr;
 
 import cc.holstr.PFGUI.load.ResourceLoader;
+import cc.holstr.PFGUI.work.CrawlTask;
 import cc.holstr.util.ZFileUtils;
 
 public class Window extends JFrame{
@@ -47,10 +52,12 @@ public class Window extends JFrame{
 	private JMenu mode;
 	private JMenuItem outputs;
 	private JMenuItem fastMode;
+	private JMenuItem resumeMode;
+	private JMenuItem clearJson;
 	private JMenuItem quit;
 	
-	private JTextField search;
-	private JTextField output;
+	private final JTextField search;
+	private final JTextField output;
 	
 	private JLabel searchLabel;
 	private JLabel outputLabel;
@@ -78,8 +85,11 @@ public class Window extends JFrame{
 	private CrawlTask crawlTask;
 	
 	private boolean fastmode = false;
+	private boolean resumemode = false;
 	
 	public Window() {
+		output = new JTextField(40);
+		search = new JTextField(40);
 		build();
 	}
 	
@@ -98,9 +108,13 @@ public class Window extends JFrame{
 		
 		outputs = new JMenuItem("View Outputs...");
 		quit = new JMenuItem("Force Quit");
+		clearJson = new JMenuItem("Reset JSON");
 		
 		fastMode = new JMenuItem("Fast Mode ON");
 		fastMode.setForeground(Color.RED);
+		
+		resumeMode = new JMenuItem("[WIP] Resume Mode ON");
+		resumeMode.setForeground(Color.RED);
 		
 		run = new JButton();
 		run.addActionListener(new ActionListener() {
@@ -120,8 +134,10 @@ public class Window extends JFrame{
 		bar.add(mode);
 		
 		file.add(outputs);
+		file.add(clearJson);
 		file.add(quit);
 		
+		mode.add(resumeMode);
 		mode.add(fastMode);
 		
 		outputs.addActionListener(new ActionListener() {
@@ -133,6 +149,12 @@ public class Window extends JFrame{
 		quit.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 				quit();
+			}
+		});
+		
+		clearJson.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				clearJson();
 			}
 		});
 		
@@ -151,9 +173,56 @@ public class Window extends JFrame{
 			}
 		});
 		
+		resumeMode.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				if(resumeMode.getText().contains("OFF")) {
+					resumeMode.setText("[WIP] Resume Mode ON");
+					resumeMode.setForeground(Color.RED);
+					resumemode = false;
+				} else {
+					resumeMode.setText("[WIP] Resume Mode OFF");
+					resumeMode.setForeground(Color.GREEN);
+					resumemode = true;
+				}
+				
+			}
+		});
+		
 		//prerun
 		JPanel searchPanel = new JPanel();
 		JPanel outputPanel = new JPanel();
+		
+		search.setDropTarget(new DropTarget() {
+	        public synchronized void drop(DropTargetDropEvent evt) {
+	            try {
+	                evt.acceptDrop(DnDConstants.ACTION_COPY);
+	                List<File> droppedFiles = (List<File>) evt
+	                        .getTransferable().getTransferData(
+	                                DataFlavor.javaFileListFlavor);
+	                for (File file : droppedFiles) {
+	                    search.setText(file.getAbsolutePath());
+	                }
+	            } catch (Exception ex) {
+	                ex.printStackTrace();
+	            }
+	        }
+	    });
+		
+		output.setDropTarget(new DropTarget() {
+	        public synchronized void drop(DropTargetDropEvent evt) {
+	            try {
+	                evt.acceptDrop(DnDConstants.ACTION_COPY);
+	                List<File> droppedFiles = (List<File>) evt
+	                        .getTransferable().getTransferData(
+	                                DataFlavor.javaFileListFlavor);
+	                for (File file : droppedFiles) {
+	                    output.setText(file.getAbsolutePath());
+	                }
+	            } catch (Exception ex) {
+	                ex.printStackTrace();
+	            }
+	        }
+	    });
 		
 		outputLabel = new JLabel("Output: ");
 		searchLabel = new JLabel("Search: ");
@@ -188,9 +257,6 @@ public class Window extends JFrame{
 				}
 			}
 		});
-		
-		output = new JTextField(40);
-		search = new JTextField(40);
 		
 		outputPanel.add(outputLabel);
 		outputPanel.add(output);
@@ -234,7 +300,7 @@ public class Window extends JFrame{
 		textLayout.add(textPanel,BorderLayout.WEST);
 		running.add(imagePanel, BorderLayout.EAST);
 		running.add(textLayout, BorderLayout.CENTER);
-		running.add(progressPanel, BorderLayout.SOUTH);
+		running.add(new JPanel(new GridLayout(0,1)).add(progressPanel), BorderLayout.SOUTH);
 		
 		running.setBorder(BorderFactory.createEmptyBorder(0,10,0,10));
 		
@@ -292,11 +358,13 @@ public class Window extends JFrame{
 		run.setText("STOP");
 		imgDir.setText("No directory found, run app.");
 		count.setText("Found: 0");
+		timeToComplete.setText("");
+		progress.setValue(0);
 		image.setIcon(new ImageIcon(Scalr.resize(ResourceLoader.toBufferedImage(ResourceLoader.getImageFromResources("blank.png")),main.getHeight())));
 	    cl.show(main, RUNNING);
 	    crawlTask = new CrawlTask(
 	    		progress, imgDir, count, progressLabel, timeToComplete,
-	    		image, main.getHeight(), fastmode,
+	    		image, main.getHeight(), fastmode, resumemode,
 	    		output.getText(), search.getText());
 	   crawlTask.execute();
 	}
@@ -307,6 +375,21 @@ public class Window extends JFrame{
 	
 	public void quit() {
 		System.exit(0);
+	}
+	
+	public void clearJson() {
+		if(ZFileUtils.isDirectoryValid(output.getText())) {
+			File temp = new File(output.getText()+System.getProperty("file.separator")+"local.json"); 
+			if(temp.delete()) {
+				JOptionPane.showMessageDialog(this, "Reset JSON output file.");
+			} else if(!temp.exists()){
+				JOptionPane.showMessageDialog(this, "JSON output file is already clear.");
+			} else {
+				JOptionPane.showMessageDialog(this, "Failed to reset JSON output file.");
+			}
+		} else {
+			JOptionPane.showMessageDialog(this, "Invalid output directory, couldn't reset.");
+		}
 	}
 	
 	public File makeFileChooser(String startingDir) {

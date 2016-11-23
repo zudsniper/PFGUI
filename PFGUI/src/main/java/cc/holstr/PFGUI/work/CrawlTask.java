@@ -1,4 +1,4 @@
-package cc.holstr.PFGUI.gui;
+package cc.holstr.PFGUI.work;
 
 import java.awt.Font;
 import java.awt.Toolkit;
@@ -16,12 +16,15 @@ import javax.imageio.ImageIO;
 import javax.swing.ImageIcon;
 import javax.swing.JLabel;
 import javax.swing.JProgressBar;
+import javax.swing.SwingUtilities;
 import javax.swing.SwingWorker;
 
 import org.apache.commons.lang.time.StopWatch;
 import org.imgscalr.Scalr;
 
+import cc.holstr.PFGUI.gui.ProgressObj;
 import cc.holstr.PFGUI.json.JsonHandler;
+import cc.holstr.util.ZFileUtils;
 
 public class CrawlTask extends SwingWorker<Long, ProgressObj>{
 
@@ -41,13 +44,18 @@ public class CrawlTask extends SwingWorker<Long, ProgressObj>{
 	private int filesChecked;
 	private JsonHandler json; 
 	
+	private File jsonOut;
+	
 	private boolean fastmode;
+	private boolean resumeMode;
 	
 	private long time;
 	
-	public CrawlTask(JProgressBar jpb, JLabel currentDir, JLabel found, JLabel progress, JLabel timeToComplete, JLabel image, int imageSize, boolean fastmode, String outputDir, String searchDir) {
+	public CrawlTask(JProgressBar jpb, JLabel currentDir, JLabel found, JLabel progress, JLabel timeToComplete,
+		JLabel image, int imageSize, boolean fastmode, boolean resumeMode, String outputDir, String searchDir) {
 		this.timeToComplete = timeToComplete;
 		this.fastmode = fastmode;
+		this.resumeMode = resumeMode;
 		this.image = image;
 		this.imageSize = imageSize;
 		this.progress = progress;
@@ -67,15 +75,21 @@ public class CrawlTask extends SwingWorker<Long, ProgressObj>{
 		} else {
 			System.out.println("[photoFinder] Fast mode off.");
 		}
-		
 		StopWatch time = new StopWatch();
 		time.start();
 		File output = new File(out);
-		File jsonOut = null; 
+		jsonOut = null; 
 		if(!output.isDirectory()) {
 			System.out.println("[photoFinder] Output folder not found!");
 		} else {
-			jsonOut = Paths.get(output.getAbsolutePath(), "local.json").toFile();
+			if(resumeMode) {
+				jsonOut = Paths.get(output.getAbsolutePath(), "local.json").toFile();
+				if(jsonOut.exists()) {
+					File temp = new File(json.readFromFile(jsonOut));
+					output = ZFileUtils.getFirstExistingParent(new File(temp.getParent()));
+					System.out.println("[photoFinder(RESUME_MODE)] first existing path is "+output);
+				} 
+			}
 		}
 		File searchFile = new File(search);
 		if(searchFile.isDirectory()) {
@@ -83,9 +97,11 @@ public class CrawlTask extends SwingWorker<Long, ProgressObj>{
 			filesChecked = 0; 
 			allInDir = 0;
 			if(!fastmode) {
-			countAllFiles(search);
+				countAllFiles(search);
 			}
 			currentDir.setFont(new Font(currentDir.getFont().getFontName(),Font.PLAIN, 10));
+			jpb.setValue(0);
+			jpb.setString("");
 			crawlAndCopy(searchFile,output);
 			json.writeToFile(jsonOut);
 			time.stop();
@@ -104,7 +120,9 @@ public class CrawlTask extends SwingWorker<Long, ProgressObj>{
         timeToComplete.setText("Completed in " + (time/1000.0) + " seconds.");
     }
 	
-	synchronized private void countAllFiles(String dirPath) {
+	//TODO make synchronized?
+	private void countAllFiles(String dirPath) {
+		jpb.setIndeterminate(true);
 		currentDir.setFont(new Font(currentDir.getFont().getFontName(),Font.PLAIN, 20));
 		currentDir.setText("Calculating requirements...");
 	    File f = new File(dirPath);
@@ -112,6 +130,7 @@ public class CrawlTask extends SwingWorker<Long, ProgressObj>{
 
 	    if (files != null)
 	    for (int i = 0; i < files.length; i++) {
+	    	jpb.setString(allInDir+" files counted...");
 	        allInDir++;
 	        File file = files[i];
 
@@ -119,20 +138,27 @@ public class CrawlTask extends SwingWorker<Long, ProgressObj>{
 	             countAllFiles(file.getAbsolutePath()); 
 	        }
 	    }
+	    jpb.setIndeterminate(false);
 	}
 	
 	public void crawlAndCopy(File dir, File outputDir) {
 		File[] directoryListing = dir.listFiles();
 		if(directoryListing != null) {
 			for(File child : directoryListing) {
+				//System.out.println("[DEBUG] Iterating");
 				if(child.isDirectory() && !child.getAbsolutePath().equals(outputDir.getAbsolutePath())) {
+					//System.out.println("[DEBUG] Child is directory that isn't output");
 					crawlAndCopy(child,outputDir);
 				} else {
+					if(isCancelled()) {
+						//System.out.println("[DEBUG] Thread cancelled!");
+						json.writeToFile(jsonOut);
+						return;
+					}
 					if(checkIfImage(child)) {
+						//System.out.println("[DEBUG] Child is an image");
 						File temp = new File(outputDir.getAbsolutePath(), child.getAbsolutePath());
-						if(temp.exists()) {
-							json.add(temp);
-						} else {
+						if(!temp.exists()) {
 							copyTo(child,outputDir,child.getName());
 						}
 						numOfMoved++;
@@ -150,12 +176,15 @@ public class CrawlTask extends SwingWorker<Long, ProgressObj>{
 						}
 					}
 					filesChecked++;
+					if(!fastmode) {
 					progress.setText(filesChecked+"/"+allInDir);
 					jpb.setValue(100*(filesChecked/allInDir));
+					} else {
+						progress.setText(filesChecked+"/?");
+					}
 					
 				}
 				currentDir.setText(child.getAbsolutePath());
-				publish(new ProgressObj(child.getAbsolutePath(),numOfMoved,filesChecked));
 			}
 		}
 	}
@@ -177,18 +206,33 @@ public class CrawlTask extends SwingWorker<Long, ProgressObj>{
 	}
 	
 	public void copyTo(File f,File outputDir,String copiedFileName) {
-		CopyOption[] options = new CopyOption[]{
+		System.out.println("[photoFinder] Copying " + f.getAbsolutePath() + " to " + outputDir.getAbsolutePath());
+		final CopyOption[] options = new CopyOption[]{
 				  StandardCopyOption.REPLACE_EXISTING,
 				  StandardCopyOption.COPY_ATTRIBUTES
 				}; 
 		json.add(f);
-		Path FROM = Paths.get(f.getAbsolutePath());
-		Path TO  = Paths.get(outputDir.getAbsolutePath() + System.getProperty("file.separator") + copiedFileName );
-		try {
-			Files.copy(FROM, TO, options);
-		} catch (IOException e) {
-			System.out.println("[photoFinder] couldn't copy file at " + f.getPath() + " to " + outputDir.getPath());
-			e.printStackTrace();
+		final Path FROM = Paths.get(f.getAbsolutePath());
+		final Path TO  = Paths.get(outputDir.getAbsolutePath() + System.getProperty("file.separator") + copiedFileName );
+		if(((f.length()/1024)/1024)>=8.0) {
+			SwingUtilities.invokeLater(new Runnable() {
+			    public void run() {
+			        try {
+						Files.copy(FROM, TO, options);
+						System.out.println("[photoFinder] Large photo (>8MB) copied.");
+					} catch (IOException e) {
+						System.out.println("[photoFinder] couldn't copy file at " + FROM + " to " + TO);
+						e.printStackTrace();
+					}
+			    }
+			});
+		} else {
+			try {
+				Files.copy(FROM, TO, options);
+			} catch (IOException e) {
+				System.out.println("[photoFinder] couldn't copy file at " + f.getPath() + " to " + outputDir.getPath());
+				e.printStackTrace();
+			}
 		}
 	}
 	
