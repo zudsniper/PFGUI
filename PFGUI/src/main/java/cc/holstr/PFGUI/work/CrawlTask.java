@@ -5,13 +5,13 @@ import java.awt.Toolkit;
 import java.awt.image.ImagingOpException;
 import java.io.File;
 import java.io.IOException;
+import java.net.URLConnection;
 import java.nio.file.CopyOption;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 
-import javax.activation.MimetypesFileTypeMap;
 import javax.imageio.ImageIO;
 import javax.swing.ImageIcon;
 import javax.swing.JLabel;
@@ -192,13 +192,14 @@ public class CrawlTask extends SwingWorker<Long, ProgressObj>{
 	public boolean checkIfImage(File f) {
 		boolean ret = false;
 		//stolen off stackOverflow's Ismael
-        String mimetype= new MimetypesFileTypeMap().getContentType(f);
+        String mimetype= URLConnection.guessContentTypeFromName(f.getName());
        // System.out.println("\n\n"+mimetype);
         String type = mimetype.split("/")[0];
         if(type.equals("image")){
         		return true;
         } else if(mimetype.equals("application/octet-stream")) {
-			if(f.getName().contains(".png") || f.getName().contains(".PNG")) {
+        	String temp = f.getName().substring(f.getName().lastIndexOf("."));
+			if(temp.equalsIgnoreCase(".png")) {
         		return true; 
         	} 
 		}
