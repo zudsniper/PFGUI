@@ -40,6 +40,8 @@ public class Window extends JFrame{
 	final static String PRERUN = "prerun";
 	final static String RUNNING = "running";
 	
+	public final static boolean debug = true;
+	
 	private JPanel mainLayout;
 	private JPanel textLayout;
 	private JPanel running;

@@ -5,13 +5,13 @@ import java.awt.Toolkit;
 import java.awt.image.ImagingOpException;
 import java.io.File;
 import java.io.IOException;
-import java.net.URLConnection;
 import java.nio.file.CopyOption;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 
+import javax.activation.MimetypesFileTypeMap;
 import javax.imageio.ImageIO;
 import javax.swing.ImageIcon;
 import javax.swing.JLabel;
@@ -23,6 +23,7 @@ import org.apache.commons.lang.time.StopWatch;
 import org.imgscalr.Scalr;
 
 import cc.holstr.PFGUI.gui.ProgressObj;
+import cc.holstr.PFGUI.gui.Window;
 import cc.holstr.PFGUI.json.JsonHandler;
 import cc.holstr.util.ZFileUtils;
 
@@ -145,18 +146,18 @@ public class CrawlTask extends SwingWorker<Long, ProgressObj>{
 		File[] directoryListing = dir.listFiles();
 		if(directoryListing != null) {
 			for(File child : directoryListing) {
-				//System.out.println("[DEBUG] Iterating");
+				System.err.println("[DEBUG] Iterating");
 				if(child.isDirectory() && !child.getAbsolutePath().equals(outputDir.getAbsolutePath())) {
-					//System.out.println("[DEBUG] Child is directory that isn't output");
+				System.err.println("[DEBUG] Child is directory that isn't output");
 					crawlAndCopy(child,outputDir);
 				} else {
 					if(isCancelled()) {
-						//System.out.println("[DEBUG] Thread cancelled!");
+						if(Window.debug) System.out.println("[DEBUG] Thread cancelled!");
 						json.writeToFile(jsonOut);
 						return;
 					}
 					if(checkIfImage(child)) {
-						//System.out.println("[DEBUG] Child is an image");
+						System.err.println("[DEBUG] Child is an image");
 						File temp = new File(outputDir.getAbsolutePath(), child.getAbsolutePath());
 						if(!temp.exists()) {
 							copyTo(child,outputDir,child.getName());
@@ -192,7 +193,7 @@ public class CrawlTask extends SwingWorker<Long, ProgressObj>{
 	public boolean checkIfImage(File f) {
 		boolean ret = false;
 		//stolen off stackOverflow's Ismael
-        String mimetype= URLConnection.guessContentTypeFromName(f.getName());
+        String mimetype= new MimetypesFileTypeMap().getContentType(f);
        // System.out.println("\n\n"+mimetype);
         String type = mimetype.split("/")[0];
         if(type.equals("image")){
@@ -207,7 +208,7 @@ public class CrawlTask extends SwingWorker<Long, ProgressObj>{
 	}
 	
 	public void copyTo(File f,File outputDir,String copiedFileName) {
-		System.out.println("[photoFinder] Copying " + f.getAbsolutePath() + " to " + outputDir.getAbsolutePath());
+		if(Window.debug) System.out.println("[photoFinder] Copying " + f.getAbsolutePath() + " to " + outputDir.getAbsolutePath());
 		final CopyOption[] options = new CopyOption[]{
 				  StandardCopyOption.REPLACE_EXISTING,
 				  StandardCopyOption.COPY_ATTRIBUTES
@@ -220,7 +221,7 @@ public class CrawlTask extends SwingWorker<Long, ProgressObj>{
 			    public void run() {
 			        try {
 						Files.copy(FROM, TO, options);
-						System.out.println("[photoFinder] Large photo (>8MB) copied.");
+						if(Window.debug) System.out.println("[photoFinder] Large photo (>8MB) copied.");
 					} catch (IOException e) {
 						System.out.println("[photoFinder] couldn't copy file at " + FROM + " to " + TO);
 						e.printStackTrace();
@@ -231,6 +232,7 @@ public class CrawlTask extends SwingWorker<Long, ProgressObj>{
 			try {
 				Files.copy(FROM, TO, options);
 			} catch (IOException e) {
+				
 				System.out.println("[photoFinder] couldn't copy file at " + f.getPath() + " to " + outputDir.getPath());
 				e.printStackTrace();
 			}
