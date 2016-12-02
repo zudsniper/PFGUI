@@ -12,6 +12,8 @@ import java.awt.dnd.DropTarget;
 import java.awt.dnd.DropTargetDropEvent;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
 import java.io.File;
 import java.util.List;
 
@@ -28,6 +30,8 @@ import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JProgressBar;
 import javax.swing.JTextField;
+import javax.swing.event.ChangeEvent;
+import javax.swing.event.ChangeListener;
 
 import org.imgscalr.Scalr;
 
@@ -280,6 +284,8 @@ public class Window extends JFrame{
 		count = new JLabel("Found: 0 images");
 		timeToComplete = new JLabel("");
 		
+		progress.setMinimum(0);
+		progress.setMaximum(100);
 		progress.setValue(0);
 		progress.setStringPainted(true);
 		

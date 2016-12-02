@@ -3,6 +3,7 @@ package cc.holstr.PFGUI.work;
 import java.awt.Font;
 import java.awt.Toolkit;
 import java.awt.image.ImagingOpException;
+import java.beans.PropertyChangeListener;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.CopyOption;
@@ -10,6 +11,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
+import java.util.List;
 
 import javax.activation.MimetypesFileTypeMap;
 import javax.imageio.ImageIO;
@@ -22,14 +24,14 @@ import javax.swing.SwingWorker;
 import org.apache.commons.lang.time.StopWatch;
 import org.imgscalr.Scalr;
 
-import cc.holstr.PFGUI.gui.ProgressObj;
 import cc.holstr.PFGUI.gui.Window;
 import cc.holstr.PFGUI.json.JsonHandler;
 import cc.holstr.util.ZFileUtils;
 
-public class CrawlTask extends SwingWorker<Long, ProgressObj>{
-
-	private JProgressBar jpb; 
+public class CrawlTask extends SwingWorker<Void, Integer>{
+ 
+	private JProgressBar jpb;
+	
 	private JLabel currentDir; 
 	private JLabel found;
 	private JLabel progress; 
@@ -50,7 +52,11 @@ public class CrawlTask extends SwingWorker<Long, ProgressObj>{
 	private boolean fastmode;
 	private boolean resumeMode;
 	
-	private long time;
+	private StopWatch time;
+	
+	private long timeStopped;
+	
+	private PropertyChangeListener props;
 	
 	public CrawlTask(JProgressBar jpb, JLabel currentDir, JLabel found, JLabel progress, JLabel timeToComplete,
 		JLabel image, int imageSize, boolean fastmode, boolean resumeMode, String outputDir, String searchDir) {
@@ -66,17 +72,18 @@ public class CrawlTask extends SwingWorker<Long, ProgressObj>{
 		out = outputDir; 
 		search = searchDir;
 		json = new JsonHandler();
+		time = new StopWatch();
 		currentDir.setFont(new Font(currentDir.getFont().getFontName(),Font.PLAIN, 10));
 	}
 	
 	@Override
-	protected Long doInBackground() throws Exception {
+	protected Void doInBackground() throws Exception {
 		if(fastmode) {
 			System.out.println("[photoFinder] Fast mode on.");
 		} else {
 			System.out.println("[photoFinder] Fast mode off.");
 		}
-		StopWatch time = new StopWatch();
+		time.reset();
 		time.start();
 		File output = new File(out);
 		jsonOut = null; 
@@ -101,14 +108,10 @@ public class CrawlTask extends SwingWorker<Long, ProgressObj>{
 				countAllFiles(search);
 			}
 			currentDir.setFont(new Font(currentDir.getFont().getFontName(),Font.PLAIN, 10));
-			jpb.setValue(0);
-			jpb.setString("");
 			crawlAndCopy(searchFile,output);
 			json.writeToFile(jsonOut);
-			time.stop();
-			this.time = time.getTime();
 			System.out.println("\n[photoFinder] finished. ");
-			return time.getTime();
+			return null;
 		} else {
 			System.out.println("[photoFinder] Search folder not found!");
 		}
@@ -117,11 +120,12 @@ public class CrawlTask extends SwingWorker<Long, ProgressObj>{
 	
 	@Override
     public void done() {
+		jpb.setValue(100);
+		time.stop();
         Toolkit.getDefaultToolkit().beep();
-        timeToComplete.setText("Completed in " + (time/1000.0) + " seconds.");
+        timeToComplete.setText("Completed in " + (time.getTime()/1000.0) + " seconds.");
     }
 	
-	//TODO make synchronized?
 	private void countAllFiles(String dirPath) {
 		jpb.setIndeterminate(true);
 		currentDir.setFont(new Font(currentDir.getFont().getFontName(),Font.PLAIN, 20));
@@ -132,13 +136,15 @@ public class CrawlTask extends SwingWorker<Long, ProgressObj>{
 	    if (files != null)
 	    for (int i = 0; i < files.length; i++) {
 	    	jpb.setString(allInDir+" files counted...");
-	        allInDir++;
 	        File file = files[i];
 
 	        if (file.isDirectory()) {   
 	             countAllFiles(file.getAbsolutePath()); 
+	        } else if(file.isFile()) {
+	        	allInDir++;
 	        }
 	    }
+	    jpb.setString("");
 	    jpb.setIndeterminate(false);
 	}
 	
@@ -152,7 +158,7 @@ public class CrawlTask extends SwingWorker<Long, ProgressObj>{
 					crawlAndCopy(child,outputDir);
 				} else {
 					if(isCancelled()) {
-						if(Window.debug) System.out.println("[DEBUG] Thread cancelled!");
+						System.out.println("[DEBUG] Thread cancelled!");
 						json.writeToFile(jsonOut);
 						return;
 					}
@@ -178,8 +184,11 @@ public class CrawlTask extends SwingWorker<Long, ProgressObj>{
 					}
 					filesChecked++;
 					if(!fastmode) {
+					
 					progress.setText(filesChecked+"/"+allInDir);
-					jpb.setValue(100*(filesChecked/allInDir));
+					int percent = (int)(((double)filesChecked)/allInDir*100); 
+					System.out.println( percent + "%");
+					publish(percent);
 					} else {
 						progress.setText(filesChecked+"/?");
 					}
@@ -188,6 +197,13 @@ public class CrawlTask extends SwingWorker<Long, ProgressObj>{
 				currentDir.setText(child.getAbsolutePath());
 			}
 		}
+	}
+	
+	@Override
+	protected void process(List<Integer> prog) {
+		int progress = prog.get(prog.size()-1);
+		
+		jpb.setValue(progress);
 	}
 	
 	public boolean checkIfImage(File f) {
