@@ -3,10 +3,17 @@ package cc.holstr.PFGUI.load;
 import java.awt.Graphics2D;
 import java.awt.Image;
 import java.awt.image.BufferedImage;
+import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 
 import javax.imageio.ImageIO;
+
+import org.apache.commons.io.IOUtils;
 
 public class ResourceLoader {
 	
@@ -18,6 +25,10 @@ public class ResourceLoader {
 			e.printStackTrace();
 		}
 		return null;
+	}
+	
+	public static InputStream resource(String path) {
+		return ResourceLoader.class.getClassLoader().getResourceAsStream(path);
 	}
 	
 	public static BufferedImage toBufferedImage(Image img)
