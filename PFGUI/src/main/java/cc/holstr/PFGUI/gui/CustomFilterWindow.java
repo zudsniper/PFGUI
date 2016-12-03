@@ -74,57 +74,12 @@ public class CustomFilterWindow extends JFrame{
 		File[] filters = Unpacker.filters.listFiles();
 		for(File f : filters) {
 			if(f.getName().substring(f.getName().lastIndexOf(".")).equals(".json")) {
-			JCheckBoxMenuItem filterItem = new JCheckBoxMenuItem(f.getName());
-			JPanel filter = new JPanel(new BorderLayout());
-			filter.add(new JLabel(f.getName()),BorderLayout.WEST);
-			filter.setBorder(new MatteBorder(0, 0, 1, 0, Color.GRAY));
-            GridBagConstraints gbc = new GridBagConstraints();
-            gbc.gridwidth = GridBagConstraints.REMAINDER;
-            gbc.weightx = 1;
-            gbc.fill = GridBagConstraints.HORIZONTAL;
-            filter.addMouseListener(new MouseListener() {
-            	Color bgBefore;
-            	
-				@Override
-				public void mouseClicked(MouseEvent e) {
-					if(e.getClickCount()==2) {
-						Window.enabledFilter = Filter.build(f);
-					}
-				}
-
-				@Override
-				public void mousePressed(MouseEvent e) {
-					bgBefore = filter.getBackground();
-					filter.setBackground(new Color(100,149,237));
-				}
-
-				@Override
-				public void mouseReleased(MouseEvent e) {
-					filter.setBackground(bgBefore);
-					
-				}
-
-				@Override
-				public void mouseEntered(MouseEvent e) {
-					// TODO Auto-generated method stub
-					
-				}
-
-				@Override
-				public void mouseExited(MouseEvent e) {
-					// TODO Auto-generated method stub
-					
-				}
-            });
-            filterItem.addActionListener((ActionEvent e) -> {
-            	Window.enabledFilter = Filter.build(f);
-            });
-            
+			GUIFilterModel model = new GUIFilterModel(f);
             if(f.getName().contains("photos.json")) {
-            	Window.enabledFilter = Filter.build(f);
+            	model.enable();
             }
-            this.filters.add(filter, gbc, 0);
-            this.filterMenu.add(filterItem);
+            this.filters.add(model.getViewPanel(), model.getGBC(), 0);
+            this.filterMenu.add(model.getMenuItem());
 			}
 		}
 	}

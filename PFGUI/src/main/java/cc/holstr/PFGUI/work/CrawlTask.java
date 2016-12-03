@@ -164,7 +164,7 @@ public class CrawlTask extends SwingWorker<Void, Integer>{
 						return;
 					}
 					if(filter.check(child)) {
-						System.out.println("[DEBUG] Child is an image");
+						System.out.println("[DEBUG] Child passes filter, copy.");
 						File temp = new File(outputDir.getAbsolutePath(), child.getAbsolutePath());
 						if(!temp.exists()) {
 							copyTo(child,outputDir,child.getName());
@@ -175,20 +175,19 @@ public class CrawlTask extends SwingWorker<Void, Integer>{
 							try {
 								image.setIcon(new ImageIcon(Scalr.resize(ImageIO.read(child),imageSize)));
 							} catch (IllegalArgumentException e) {
-								e.printStackTrace();
+								//e.printStackTrace();
 							} catch (ImagingOpException e) {
-								e.printStackTrace();
+								//e.printStackTrace();
 							} catch (IOException e) {
-								e.printStackTrace();
+								//e.printStackTrace();
 							}
 						}
 					}
 					filesChecked++;
 					if(!fastmode) {
-					
 					progress.setText(filesChecked+"/"+allInDir);
 					int percent = (int)(((double)filesChecked)/allInDir*100); 
-					System.out.println( percent + "%");
+					//System.out.println( percent + "%");
 					publish(percent);
 					} else {
 						progress.setText(filesChecked+"/?");

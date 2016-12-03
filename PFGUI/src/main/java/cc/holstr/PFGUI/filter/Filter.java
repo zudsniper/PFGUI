@@ -14,32 +14,46 @@ import com.google.gson.JsonIOException;
 import com.google.gson.JsonSyntaxException;
 
 public class Filter {
-	public HashMap<String, FilterRestriction> mimetypes;
-	public Set<String> exts;
+	private String filterName; 
+	private HashMap<String, FilterRestriction> mimetypes;
+	private Set<String> exts;
 	
-	public Filter(HashMap<String, FilterRestriction> mimetypes, Set<String> exts) {
+	public Filter(String filterName, HashMap<String, FilterRestriction> mimetypes, Set<String> exts) {
 		super();
+		this.filterName = filterName;
 		this.mimetypes = mimetypes;
 		this.exts = exts;
 	}
 
 	private boolean checkByMime(File f) {
-	 String ext = f.getName().substring(f.getName().lastIndexOf("."));
+		String ext; 
+	 if(f.getName().lastIndexOf(".")==0) {
+		 ext = "";
+	 } else {
+	 ext = f.getName().substring(f.getName().lastIndexOf("."));
+	 }
 	 String mimetype= new MimetypesFileTypeMap().getContentType(f);
 	 String type = mimetype.split("/")[0];
+	 System.out.println("ext: " + ext);
+	 System.out.println("mime: " + mimetype);
+	 System.out.println("general type: " + type);
 	 boolean mime = false;
-	 if(mimetypes.containsKey(mimetype) || mimetypes.containsKey("@"+type)) {
-		 Set<String> blacklist = mimetypes.get(mimetype).getBlacklist();
+	 String checkMime = mimetype;
+	 if(mimetypes.containsKey("@"+type)) {
+		 checkMime = "@"+type;
+	 }
+	 if(mimetypes.containsKey(checkMime)) {
+		 Set<String> blacklist = mimetypes.get(checkMime).getBlacklist();
 		 if(blacklist!=null) {
 			if(!blacklist.contains(ext) || blacklist.size()==0) {
-				Set<String> whitelist = mimetypes.get(mimetypes).getWhitelist();
+				Set<String> whitelist = mimetypes.get(checkMime).getWhitelist();
 				if(whitelist!=null) {
-						return whitelist.contains(ext) || whitelist.size()==0;
+						mime = whitelist.contains(ext) || whitelist.size()==0;
 				}
 			}  
 		 }
 	 }
-	 return (mime);
+	 return mime;
 	 
 	}
 
@@ -61,7 +75,9 @@ public class Filter {
 		try {
 			FilterModel model = gson.fromJson(new FileReader(f), FilterModel.class);
 			System.out.println("[photoFinder] Filter for " + f.getName() +" built.");
-			return model.toFilter();
+			Filter built = model.toFilter(f.getName());
+			System.out.println(built);
+			return built;
 		} catch (JsonSyntaxException e) {
 			e.printStackTrace();
 		} catch (JsonIOException e) {
@@ -72,4 +88,22 @@ public class Filter {
 		System.err.println("[photoFinder] filter builder returning null on file " + f.getAbsolutePath());
 		return null; 
 	}
+	
+	public String toString() {
+		String output = "FILTER: \n";
+		if(mimetypes!=null) {
+			output+= "mimes : ";
+			for(String mime : mimetypes.keySet()) {
+				output+= mime + ", ";
+			}
+		}
+		if(exts!=null) {
+			output+="\nexts : ";
+			for(String ext : exts) {
+				output+= ext + ", ";
+			}
+		}
+		return output;
+	}
+
 }

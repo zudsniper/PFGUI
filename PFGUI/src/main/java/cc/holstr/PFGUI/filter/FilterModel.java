@@ -14,7 +14,7 @@ public class Mime {
 	protected List<String> extRestrictions;
 	}
 
-public Filter toFilter() {
+public Filter toFilter(String filterName) {
 	HashMap<String, FilterRestriction> mimetypes = new HashMap<String, FilterRestriction>();
 	HashSet<String>	exts = new HashSet<String>();
 	
@@ -40,10 +40,10 @@ public Filter toFilter() {
 		
 	}
 
-	for(String ext : exts) {
+	for(String ext : this.exts) {
 		exts.add(ext);
 	}
 	
-	return new Filter(mimetypes,exts);
+	return new Filter(filterName, mimetypes,exts);
 }
 }
