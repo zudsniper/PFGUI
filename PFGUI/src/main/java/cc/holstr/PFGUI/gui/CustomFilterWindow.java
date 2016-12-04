@@ -1,6 +1,7 @@
 package cc.holstr.PFGUI.gui;
 
 import java.awt.BorderLayout;
+import java.awt.Component;
 import java.awt.Desktop;
 import java.awt.Dimension;
 import java.awt.GridBagConstraints;
@@ -12,8 +13,11 @@ import java.util.ArrayList;
 import java.util.List;
 
 import javax.swing.JButton;
+import javax.swing.JCheckBoxMenuItem;
 import javax.swing.JFrame;
 import javax.swing.JMenu;
+import javax.swing.JMenuItem;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 
@@ -29,8 +33,10 @@ public class CustomFilterWindow extends JFrame{
 	private JPanel filters;
 	
 	private JButton openFiltersDir;
+	private JButton reloadFilters;
 	
 	private JMenu filterMenu;
+	private JMenuItem reloadFiltersMenu;
 	
 	private List<GUIFilterModel> filtermodels; 
 	
@@ -41,9 +47,11 @@ public class CustomFilterWindow extends JFrame{
 	}
 
 	public void build() {
+		reloadFiltersMenu = new JMenuItem("Reload Filters");
 		setLayout(new BorderLayout());
 		buttons = new JPanel();
 		openFiltersDir = new JButton("Open Filters Directory");
+		reloadFilters = new JButton("Reload");
 		filters = new JPanel(new GridBagLayout());
 		GridBagConstraints gbc = new GridBagConstraints();
         gbc.gridwidth = GridBagConstraints.REMAINDER;
@@ -53,18 +61,40 @@ public class CustomFilterWindow extends JFrame{
 		
 		add(new JScrollPane(filters),BorderLayout.CENTER);
 		add(buttons,BorderLayout.SOUTH);
+		//buttons.add(reloadFilters);
 		buttons.add(openFiltersDir);
+		
+		filterMenu.add(reloadFiltersMenu);
+		
+		reloadFiltersMenu.addActionListener((ActionEvent e) -> {
+			reloadFilters();
+		});
+		
+		reloadFilters.addActionListener((ActionEvent e) -> {
+			reloadFilters();
+		});
 		
 		openFiltersDir.addActionListener((ActionEvent e) -> {
 			try {
 				Desktop.getDesktop().open(Unpacker.filters);
 			} catch (IOException e1) {
-				System.err.println("Couldn't open filters folder.");
+				JOptionPane.showMessageDialog(this, "Unable to open filters folder.");
 			}
 		});
 		
 		loadFilters();
 		setMinimumSize(new Dimension(300,250));
+	}
+	
+	public void reloadFilters() {
+		for(GUIFilterModel model : filtermodels) {
+			filters.remove(model.getViewPanel());
+			filterMenu.remove(model.getMenuItem());
+		}
+		filtermodels.clear();
+//		revalidate();
+//		repaint();
+		loadFilters();
 	}
 	
 	public void loadFilters() {

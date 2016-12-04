@@ -40,6 +40,11 @@ import cc.holstr.util.ZFileUtils;
 
 public class Window extends JFrame{
 	
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = -1818579964851111402L;
+	
 	final static String PRERUN = "prerun";
 	final static String RUNNING = "running";
 	
