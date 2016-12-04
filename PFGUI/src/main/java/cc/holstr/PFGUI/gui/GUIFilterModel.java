@@ -20,6 +20,8 @@ public class GUIFilterModel {
 	private final Color enabledColor = new Color(154,205,50);
 	private Color bgBefore; 
 	
+	private CustomFilterWindow parent; 
+	
 	private JPanel viewPanel;
 	
 	private JCheckBoxMenuItem menuItem;
@@ -30,14 +32,16 @@ public class GUIFilterModel {
 	private boolean enabled;
 	private File file; 
 	
-	public GUIFilterModel(File file) {
+	public GUIFilterModel(File file, CustomFilterWindow parent) {
+		this.parent = parent;
 		this.name = file.getName();
 		this.file = file;
 		this.enabled = false;
 		makeMenuModel();
 	}
 	
-	public GUIFilterModel(File file, String name) {
+	public GUIFilterModel(File file, String name, CustomFilterWindow parent) {
+		this.parent = parent;
 		this.name = name; 
 		this.enabled = false;
 		this.file = file;
@@ -58,11 +62,7 @@ public class GUIFilterModel {
 			@Override
 			public void mouseClicked(MouseEvent e) {
 				if(e.getClickCount()==2) {
-					if(enabled) {
-						disable();
-					} else {
 						enable();
-					}
 				}
 			}
 
@@ -94,15 +94,12 @@ public class GUIFilterModel {
 			}
         });
         menuItem.addActionListener((ActionEvent e) -> {
-        	if(menuItem.isSelected()) {
-        		disable();
-        	} else {
         		enable();
-        	}
         });
 	}
 	
 	public void enable() {
+		parent.becameEnabled(this);
 		enabled = true;
 		Window.enabledFilter = Filter.build(file);
 		viewPanel.setBackground(enabledColor);
@@ -125,5 +122,9 @@ public class GUIFilterModel {
 
 	public GridBagConstraints getGBC() {
 		return gbc;
+	}
+	
+	public String getName() {
+		return this.name;
 	}
 }

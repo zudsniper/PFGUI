@@ -20,7 +20,7 @@ public class Filter {
 	
 	public Filter(String filterName, HashMap<String, FilterRestriction> mimetypes, Set<String> exts) {
 		super();
-		this.filterName = filterName;
+		this.setFilterName(filterName);
 		this.mimetypes = mimetypes;
 		this.exts = exts;
 	}
@@ -89,6 +89,14 @@ public class Filter {
 		return null; 
 	}
 	
+	public String getFilterName() {
+		return filterName;
+	}
+
+	public void setFilterName(String filterName) {
+		this.filterName = filterName;
+	}
+
 	public String toString() {
 		String output = "FILTER: \n";
 		if(mimetypes!=null) {

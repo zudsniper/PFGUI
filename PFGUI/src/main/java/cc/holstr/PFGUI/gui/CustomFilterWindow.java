@@ -1,29 +1,23 @@
 package cc.holstr.PFGUI.gui;
 
 import java.awt.BorderLayout;
-import java.awt.Color;
 import java.awt.Desktop;
 import java.awt.Dimension;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.event.ActionEvent;
-import java.awt.event.MouseEvent;
-import java.awt.event.MouseListener;
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 import javax.swing.JButton;
-import javax.swing.JCheckBoxMenuItem;
 import javax.swing.JFrame;
-import javax.swing.JLabel;
 import javax.swing.JMenu;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
-import javax.swing.border.MatteBorder;
 
 import cc.holstr.PFGUI.load.Unpacker;
-import cc.holstr.PFGUI.filter.Filter;
-import cc.holstr.PFGUI.gui.Window;
 
 public class CustomFilterWindow extends JFrame{
 	/**
@@ -38,7 +32,10 @@ public class CustomFilterWindow extends JFrame{
 	
 	private JMenu filterMenu;
 	
+	private List<GUIFilterModel> filtermodels; 
+	
 	public CustomFilterWindow(JMenu filterMenu) {
+		this.filtermodels = new ArrayList<GUIFilterModel>();
 		this.filterMenu = filterMenu;
 		build();
 	}
@@ -74,12 +71,21 @@ public class CustomFilterWindow extends JFrame{
 		File[] filters = Unpacker.filters.listFiles();
 		for(File f : filters) {
 			if(f.getName().substring(f.getName().lastIndexOf(".")).equals(".json")) {
-			GUIFilterModel model = new GUIFilterModel(f);
+			GUIFilterModel model = new GUIFilterModel(f,this);
             if(f.getName().contains("photos.json")) {
             	model.enable();
             }
             this.filters.add(model.getViewPanel(), model.getGBC(), 0);
             this.filterMenu.add(model.getMenuItem());
+            filtermodels.add(model);
+			}
+		}
+	}
+	
+	public void becameEnabled(GUIFilterModel model) {
+		for(GUIFilterModel e : filtermodels) {
+			if(!e.getName().equals(model.getName())) {
+				e.disable();
 			}
 		}
 	}
