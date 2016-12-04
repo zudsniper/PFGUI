@@ -3,7 +3,6 @@ package cc.holstr.PFGUI.work;
 import java.awt.Font;
 import java.awt.Toolkit;
 import java.awt.image.ImagingOpException;
-import java.beans.PropertyChangeListener;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.CopyOption;
@@ -24,6 +23,7 @@ import javax.swing.SwingWorker;
 import org.apache.commons.lang.time.StopWatch;
 import org.imgscalr.Scalr;
 
+import cc.holstr.PFGUI.filter.Filter;
 import cc.holstr.PFGUI.gui.Window;
 import cc.holstr.PFGUI.json.JsonHandler;
 import cc.holstr.util.ZFileUtils;
@@ -56,9 +56,9 @@ public class CrawlTask extends SwingWorker<Void, Integer>{
 	
 	private long timeStopped;
 	
-	private PropertyChangeListener props;
+	private Filter filter; 
 	
-	public CrawlTask(JProgressBar jpb, JLabel currentDir, JLabel found, JLabel progress, JLabel timeToComplete,
+	public CrawlTask(Filter filter, JProgressBar jpb, JLabel currentDir, JLabel found, JLabel progress, JLabel timeToComplete,
 		JLabel image, int imageSize, boolean fastmode, boolean resumeMode, String outputDir, String searchDir) {
 		this.timeToComplete = timeToComplete;
 		this.fastmode = fastmode;
@@ -69,6 +69,7 @@ public class CrawlTask extends SwingWorker<Void, Integer>{
 		this.currentDir = currentDir;
 		this.found = found;
 		this.jpb = jpb;
+		this.filter = filter;
 		out = outputDir; 
 		search = searchDir;
 		json = new JsonHandler();
@@ -152,9 +153,9 @@ public class CrawlTask extends SwingWorker<Void, Integer>{
 		File[] directoryListing = dir.listFiles();
 		if(directoryListing != null) {
 			for(File child : directoryListing) {
-				System.err.println("[DEBUG] Iterating");
+				System.out.println("[DEBUG] Iterating");
 				if(child.isDirectory() && !child.getAbsolutePath().equals(outputDir.getAbsolutePath())) {
-				System.err.println("[DEBUG] Child is directory that isn't output");
+				System.out.println("[DEBUG] Child is directory that isn't output");
 					crawlAndCopy(child,outputDir);
 				} else {
 					if(isCancelled()) {
@@ -162,8 +163,8 @@ public class CrawlTask extends SwingWorker<Void, Integer>{
 						json.writeToFile(jsonOut);
 						return;
 					}
-					if(checkIfImage(child)) {
-						System.err.println("[DEBUG] Child is an image");
+					if(filter.check(child)) {
+						System.out.println("[DEBUG] Child passes filter, copy.");
 						File temp = new File(outputDir.getAbsolutePath(), child.getAbsolutePath());
 						if(!temp.exists()) {
 							copyTo(child,outputDir,child.getName());
@@ -174,20 +175,19 @@ public class CrawlTask extends SwingWorker<Void, Integer>{
 							try {
 								image.setIcon(new ImageIcon(Scalr.resize(ImageIO.read(child),imageSize)));
 							} catch (IllegalArgumentException e) {
-								e.printStackTrace();
+								//e.printStackTrace();
 							} catch (ImagingOpException e) {
-								e.printStackTrace();
+								//e.printStackTrace();
 							} catch (IOException e) {
-								e.printStackTrace();
+								//e.printStackTrace();
 							}
 						}
 					}
 					filesChecked++;
 					if(!fastmode) {
-					
 					progress.setText(filesChecked+"/"+allInDir);
 					int percent = (int)(((double)filesChecked)/allInDir*100); 
-					System.out.println( percent + "%");
+					//System.out.println( percent + "%");
 					publish(percent);
 					} else {
 						progress.setText(filesChecked+"/?");
@@ -206,9 +206,9 @@ public class CrawlTask extends SwingWorker<Void, Integer>{
 		jpb.setValue(progress);
 	}
 	
+	@Deprecated
 	public boolean checkIfImage(File f) {
 		boolean ret = false;
-		//stolen off stackOverflow's Ismael
         String mimetype= new MimetypesFileTypeMap().getContentType(f);
        // System.out.println("\n\n"+mimetype);
         String type = mimetype.split("/")[0];

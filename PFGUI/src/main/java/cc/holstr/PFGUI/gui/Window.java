@@ -12,8 +12,6 @@ import java.awt.dnd.DropTarget;
 import java.awt.dnd.DropTargetDropEvent;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.beans.PropertyChangeEvent;
-import java.beans.PropertyChangeListener;
 import java.io.File;
 import java.util.List;
 
@@ -30,21 +28,31 @@ import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JProgressBar;
 import javax.swing.JTextField;
-import javax.swing.event.ChangeEvent;
-import javax.swing.event.ChangeListener;
+import javax.swing.UIManager;
+import javax.swing.UIManager.LookAndFeelInfo;
 
 import org.imgscalr.Scalr;
 
+import cc.holstr.PFGUI.filter.Filter;
 import cc.holstr.PFGUI.load.ResourceLoader;
 import cc.holstr.PFGUI.work.CrawlTask;
 import cc.holstr.util.ZFileUtils;
 
 public class Window extends JFrame{
 	
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = -1818579964851111402L;
+	
 	final static String PRERUN = "prerun";
 	final static String RUNNING = "running";
 	
 	public final static boolean debug = true;
+	
+	public static Filter enabledFilter;
+	
+	private CustomFilterWindow filterWindow;
 	
 	private JPanel mainLayout;
 	private JPanel textLayout;
@@ -56,6 +64,8 @@ public class Window extends JFrame{
 	private JMenuBar bar; 
 	private JMenu file; 
 	private JMenu mode;
+	private JMenu filters;
+	private JMenuItem filterMenuItem;
 	private JMenuItem outputs;
 	private JMenuItem fastMode;
 	private JMenuItem resumeMode;
@@ -111,6 +121,7 @@ public class Window extends JFrame{
 		
 		file = new JMenu("File");
 		mode = new JMenu("Modes");
+		filters = new JMenu("Filters");
 		
 		outputs = new JMenuItem("View Outputs...");
 		quit = new JMenuItem("Force Quit");
@@ -122,14 +133,17 @@ public class Window extends JFrame{
 		resumeMode = new JMenuItem("[WIP] Resume Mode ON");
 		resumeMode.setForeground(Color.RED);
 		
+		filterMenuItem = new JMenuItem("Open Filter Menu...");
+		
+		filters.add(filterMenuItem);
+		filterWindow = new CustomFilterWindow(filters);
+		
 		run = new JButton();
 		run.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 				run();
 			}
 		});
-		
-		run.setPreferredSize(new Dimension(Integer.MAX_VALUE,20));
 		
 		cl = (CardLayout)(main.getLayout());
 		
@@ -138,6 +152,7 @@ public class Window extends JFrame{
 		//menu layout
 		bar.add(file);
 		bar.add(mode);
+		bar.add(filters);
 		
 		file.add(outputs);
 		file.add(clearJson);
@@ -192,6 +207,10 @@ public class Window extends JFrame{
 				}
 				
 			}
+		});
+		
+		filterMenuItem.addActionListener((ActionEvent e) -> {
+			openFilterMenu();
 		});
 		
 		//prerun
@@ -332,6 +351,23 @@ public class Window extends JFrame{
 		setResizable(false);
 		setVisible(true);
 		setTitle("PhotoFinder GUI");
+		
+		//look & feel
+		String os = System.getProperty("os.name");
+		try {
+		    if(os.contains("Mac")) {
+		    	UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
+		    } else if(os.contains("Windows")) {
+		    	for (LookAndFeelInfo info : UIManager.getInstalledLookAndFeels()) {
+				       if ("Nimbus".equals(info.getName())) {
+				           UIManager.setLookAndFeel(info.getClassName());
+				           break;
+				        }
+				    }
+		    }
+		} catch (Exception e) {
+		    // If Nimbus is not available, you can set the GUI to another look and feel.
+		}
 	}
 	
 	public void run() {
@@ -370,7 +406,7 @@ public class Window extends JFrame{
 		progress.setValue(0);
 		image.setIcon(new ImageIcon(Scalr.resize(ResourceLoader.toBufferedImage(ResourceLoader.getImageFromResources("blank.png")),main.getHeight())));
 	    cl.show(main, RUNNING);
-	    crawlTask = new CrawlTask(
+	    crawlTask = new CrawlTask(enabledFilter,
 	    		progress, imgDir, count, progressLabel, timeToComplete,
 	    		image, main.getHeight(), fastmode, resumemode,
 	    		output.getText(), search.getText());
@@ -383,6 +419,10 @@ public class Window extends JFrame{
 	
 	public void quit() {
 		System.exit(0);
+	}
+	
+	public void openFilterMenu() {
+		filterWindow.setVisible(true);
 	}
 	
 	public void clearJson() {

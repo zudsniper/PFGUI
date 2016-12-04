@@ -1,0 +1,7 @@
+{
+  "mimes" : [
+  	{"mime":"@image"},
+	{"mime":"application/octet-stream","extRestrictions":[".png",".PNG"]}
+], 
+  "exts": []
+}
